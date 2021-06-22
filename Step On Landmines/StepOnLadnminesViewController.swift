@@ -20,22 +20,13 @@ class StepOnLadnminesViewController: UIViewController {
     var recordLand:[Int] = []//設置地雷的陣列
     var abomb: [Int] = []//存取地雷與無地雷數字的陣列
     var boolBomb:[Bool] = []//檢查無地雷的地板掀開數量
-
-    
-    var timer : Timer? //宣告使用計時器
-    var timerState = false // false: 暫停 ; true: 播放
-    var ms = 0 //計算基數
     var start = false //使用Bool來讓同一個按鈕可以做不同的事情
     
-    var min = 0
-    var sec = 0
-    var milSec = 0
-    
-    var showMin = ""
-    var showSec = ""
-    var showMilSec = ""
-    
-    
+    lazy var clock: Clock = {
+        let clock = Clock()
+        clock.delegate = self
+        return clock
+    }()
 
     override func viewDidLoad() {
         super.viewDidLoad()
@@ -161,35 +152,7 @@ class StepOnLadnminesViewController: UIViewController {
             present(controller, animated: true,completion: nil)
         }
     }
-    
-    func startTimer(){
-        //執行間隔為0.01則表示每毫秒
-        timer = Timer.scheduledTimer(timeInterval: 0.01, target: self, selector: #selector(startCount), userInfo: nil, repeats: true)
-        startButton.setTitle("停止", for:.normal)
-        startButton.setTitleColor(.red, for: .normal)
-    }
-    
-    func stopTimer(){
-        timer?.invalidate()//讓timer停止不要在背景運作
-        ms = 0
-        startButton.setTitle("開始", for:.normal)
-        startButton.setTitleColor(.blue, for: .normal)
-    }
-    
-    
-    @objc func startCount(){
-     ms += 1 //每次執行+1就是執行一毫秒
-     min = ms / 6000
-     sec = (ms / 100) % 60
-     milSec = ms % 100
-     
-     showMin = min > 9 ? "\(min)" : "0\(min)"
-     showSec = sec > 9 ? "\(sec)" : "0\(sec)"
-     showMilSec = milSec > 9 ? "\(milSec)" : "0\(milSec)"
-     
-     let timeString = "\(showMin):\(showSec).\(showMilSec)"
-     self.clockLabel.text = timeString
-     }
+
     /*
      // MARK: - Navigation
      
@@ -212,10 +175,10 @@ class StepOnLadnminesViewController: UIViewController {
     }
     
     @IBAction func changeColor(_ sender: UIButton) {
-        startTimer()
+        clock.startTimer()
         
         if abomb[sender.tag] == -1 {
-            stopTimer()
+            clock.stopTimer()
 
             //掀開地板
             for i in 0 ..< row * column{
@@ -238,11 +201,46 @@ class StepOnLadnminesViewController: UIViewController {
         }
         checkFloor() //計算沒有地雷且還沒掀開的地板數量
     }
+}
+
+extension StepOnLadnminesViewController: ClockDelegate {
+    func clock(_ clock: Clock, didUpdateTime time: String) {
+        clockLabel.text = time
+    }
+}
+
+protocol ClockDelegate: AnyObject {
+    func clock(_ clock: Clock, didUpdateTime time: String) -> Void
+}
+
+class Clock {
+    var timer : Timer? //宣告使用計時器
+    var ms = 0 //計算基數
     
+    weak var delegate: ClockDelegate?
     
+    func startTimer() -> Void {
+        //執行間隔為0.01則表示每毫秒
+        timer?.invalidate()
+        timer = Timer.scheduledTimer(timeInterval: 0.01, target: self, selector: #selector(startCount), userInfo: nil, repeats: true)
+    }
     
+    func stopTimer() -> Void {
+        timer?.invalidate()//讓timer停止不要在背景運作
+        timer = nil
+        ms = 0
+    }
     
-    
-    
-    
+    @objc private func startCount() -> Void {
+        ms += 1 //每次執行+1就是執行一毫秒
+        let min = ms / 6000
+        let sec = (ms / 100) % 60
+        let milSec = ms % 100
+        
+        let showMin = min > 9 ? "\(min)" : "0\(min)"
+        let showSec = sec > 9 ? "\(sec)" : "0\(sec)"
+        let showMilSec = milSec > 9 ? "\(milSec)" : "0\(milSec)"
+        
+        delegate?.clock(self, didUpdateTime: "\(showMin):\(showSec).\(showMilSec)")
+    }
 }
